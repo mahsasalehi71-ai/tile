@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>آزمایشگاه کاشی‌کاری | مهسا صالحی</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: #0b1220;
+      --surface: #121e31;
+      --line: #344660;
+      --text: #f3f6fb;
+      --muted: #bccbe1;
+      --accent: #79e0da;
+      font: 18px/1.65 system-ui, Tahoma, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--background); color: var(--text); }
+    .shell { width: min(100% - 2rem, 86rem); margin-inline: auto; }
+    header { border-bottom: 1px solid var(--line); }
+    header .shell {
+      display: flex; align-items: baseline; justify-content: space-between;
+      flex-wrap: wrap; gap: .25rem 1rem; padding-block: 1rem;
+    }
+    h1 { margin: 0; font-size: clamp(1.55rem, 3vw, 2.25rem); line-height: 1.35; }
+    .credit { margin: 0; color: var(--muted); }
+    main { padding-block: 1.2rem 2rem; }
+    .tabs {
+      display: inline-grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .25rem; padding: .25rem; margin-bottom: 1rem;
+      border: 1px solid var(--line); border-radius: .85rem; background: var(--surface);
+    }
+    button {
+      min-height: 2.65rem; padding: .4rem .7rem; font: inherit; font-weight: 600;
+      color: var(--text); background: #1c2b41; border: 1px solid var(--line);
+      border-radius: .6rem; cursor: pointer;
+    }
+    button:hover { background: #293d55; }
+    button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    [role="tab"] { min-width: 7rem; border-color: transparent; background: transparent; }
+    [role="tab"][aria-selected="true"] { background: var(--accent); color: #082324; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; gap: 1rem; align-items: start; }
+    .figure {
+      position: relative; margin: 0; min-width: 0; overflow: hidden;
+      border: 1px solid var(--line); border-radius: 1rem; background: #0a1425;
+    }
+    canvas { display: block; width: 100%; height: clamp(21rem, 67vh, 43rem); cursor: grab; touch-action: none; }
+    canvas:active { cursor: grabbing; }
+    figcaption {
+      padding: .55rem .9rem; color: var(--muted); background: var(--surface);
+      border-top: 1px solid var(--line);
+    }
+    .controls {
+      display: grid; gap: .8rem; padding: 1rem; background: var(--surface);
+      border: 1px solid var(--line); border-radius: 1rem;
+    }
+    h2 { font-size: 1.15rem; line-height: 1.4; margin: 0; }
+    .presets { display: grid; gap: .4rem; }
+    .presets button { text-align: start; }
+    .presets button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+    dl { margin: 0; padding-block: .6rem; display: grid; gap: .4rem; border-block: 1px solid var(--line); }
+    dl > div { display: grid; grid-template-columns: auto 1fr; gap: .6rem; align-items: baseline; }
+    dt { color: var(--muted); }
+    dd { margin: 0; font-weight: 650; }
+    .message {
+      position: absolute; inset-inline: .75rem; top: .75rem; padding: .45rem .7rem;
+      margin: 0; color: #ffe4b8; background: #2b221b; border-radius: .55rem; pointer-events: none;
+    }
+    @media (max-width: 52rem) {
+      .layout { grid-template-columns: 1fr; }
+      canvas { height: clamp(16rem, 47vh, 27rem); }
+      .presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 26rem) {
+      .shell { width: calc(100% - 1rem); }
+      .tabs { display: grid; }
+      .controls { padding: .75rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell">
+      <h1>آزمایشگاه کاشی‌کاری</h1>
+      <p class="credit">طراح مهسا صالحی</p>
+    </div>
+  </header>
+  <main class="shell">
+    <div class="tabs" role="tablist" aria-label="نوع کاشی‌کاری">
+      <button type="button" id="triangle-tab" role="tab" aria-selected="true" aria-controls="experiment" data-mode="triangle">مثلث</button>
+      <button type="button" id="quadrilateral-tab" role="tab" aria-selected="false" aria-controls="experiment" data-mode="quadrilateral" tabindex="-1">چهارضلعی</button>
+    </div>
+    <section class="layout" id="experiment" role="tabpanel" aria-labelledby="triangle-tab">
+      <figure class="figure">
+        <canvas aria-label="نمای تعاملی کاشی‌کاری" aria-describedby="canvas-help">مرورگر شما از نمایش این الگو پشتیبانی نمی‌کند.</canvas>
+        <p id="message" class="message" role="status" hidden></p>
+        <figcaption id="canvas-help">برای تغییر شکل، رأس‌ها را بکشید. برای جابه‌جایی نما، پس‌زمینه را بکشید.</figcaption>
+      </figure>
+      <aside class="controls" aria-labelledby="shape-title">
+        <h2 id="shape-title">انتخاب نوع مثلث</h2>
+        <div class="presets" id="presets"></div>
+        <dl>
+          <div><dt>نوع شکل</dt><dd id="shape-type"></dd></div>
+        </dl>
+        <button type="button" id="center">مرکز کردن نما</button>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const presets = {
+      triangle: [
+        ['متساوی‌الاضلاع', [[0, 35 - 60 * Math.sqrt(3)], [60, 35], [-60, 35]]],
+        ['متساوی‌الساقین', [[0, -80], [40, 50], [-40, 50]]],
+        ['قائم‌الزاویه', [[-50, -50], [70, -50], [-50, 50]]],
+        ['مختلف‌الاضلاع (منفرجه)', [[-70, 0], [20, -30], [80, 60]]]
+      ],
+      quadrilateral: [
+        ['محدب', [[-50, -50], [50, -50], [50, 50], [-50, 50]]],
+        ['مقعر', [[-60, -50], [60, -50], [0, -10], [-40, 50]]],
+        ['متوازی‌الاضلاع', [[-50, -30], [40, -30], [60, 30], [-30, 30]]],
+        ['ذوزنقه', [[-40, -40], [40, -40], [60, 40], [-60, 40]]]
+      ]
+    };
+    const copyPoints = points => points.map(([x, y]) => [x, y]);
+    const states = Object.fromEntries(Object.entries(presets).map(([mode, shapes]) => [
+      mode, { points: copyPoints(shapes[0][1]), pan: [0, 0], selected: 0 }
+    ]));
+    const canvas = document.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+    const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    const experiment = document.getElementById('experiment');
+    const presetList = document.getElementById('presets');
+    const shapeTitle = document.getElementById('shape-title');
+    const shapeType = document.getElementById('shape-type');
+    const message = document.getElementById('message');
+    const add = ([ax, ay], [bx, by]) => [ax + bx, ay + by];
+    const subtract = ([ax, ay], [bx, by]) => [ax - bx, ay - by];
+    const cross = ([ax, ay], [bx, by]) => ax * by - ay * bx;
+    const distance = (a, b) => Math.hypot(...subtract(a, b));
+    const turn = (a, b, c) => cross(subtract(b, a), subtract(c, a));
+    let mode = 'triangle';
+    let gesture;
+    let width, height;
+    let frame;
+
+    function setMode(nextMode) {
+      gesture = undefined;
+      mode = nextMode;
+      for (const tab of tabs) {
+        const active = tab.dataset.mode === mode;
+        tab.setAttribute('aria-selected', active);
+        tab.tabIndex = active ? 0 : -1;
+        if (active) experiment.setAttribute('aria-labelledby', tab.id);
+      }
+      shapeTitle.textContent = mode === 'triangle' ? 'انتخاب نوع مثلث' : 'انتخاب نوع چهارضلعی';
+      presetList.replaceChildren(...presets[mode].map(([label, points], index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.addEventListener('click', () => {
+          const state = states[mode];
+          state.points = copyPoints(points);
+          state.selected = index;
+          updatePresetButtons();
+          scheduleRender();
+        });
+        return button;
+      }));
+      updatePresetButtons();
+      scheduleRender();
+    }
+
+    function updatePresetButtons() {
+      Array.from(presetList.children).forEach((button, index) => {
+        button.setAttribute('aria-pressed', index === states[mode].selected);
+      });
+    }
+
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => setMode(tab.dataset.mode));
+      tab.addEventListener('keydown', event => {
+        const targets = { Home: tabs[0], End: tabs[1],
+          ArrowLeft: tabs.find(item => item !== tab), ArrowRight: tabs.find(item => item !== tab) };
+        const target = targets[event.key];
+        if (!target) return;
+        event.preventDefault();
+        setMode(target.dataset.mode);
+        target.focus();
+      });
+    }
+
+    function intersects(a, b, c, d) {
+      return turn(a, b, c) * turn(a, b, d) < 0 && turn(c, d, a) * turn(c, d, b) < 0;
+    }
+
+    function getShapeInfo(points) {
+      const sides = points.map((point, i) => distance(point, points[(i + 1) % points.length]));
+      if (points.length === 4 &&
+          (intersects(points[0], points[1], points[2], points[3]) ||
+           intersects(points[1], points[2], points[3], points[0]))) {
+        return { error: 'ضلع‌ها همدیگر را قطع می‌کنند. جای یکی از رأس‌ها را تغییر دهید.' };
+      }
+      const turns = points.map((point, i) => turn(point, points[(i + 1) % points.length], points[(i + 2) % points.length]));
+      if (sides.some(side => side < .5) || turns.some(value => Math.abs(value) < 1)) {
+        return { error: 'رأس‌ها را از هم و از روی یک خط دور کنید تا کاشی‌کاری رسم شود.' };
+      }
+      let type;
+      if (points.length === 4) {
+        type = turns.some(value => value > 0) && turns.some(value => value < 0) ? 'مقعر' : 'محدب';
+      } else {
+        const [a, b, c] = [...sides].sort((left, right) => left - right);
+        const sideTolerance = Math.max(.5, c * .01);
+        type = 'مختلف‌الاضلاع';
+        if (c - a < sideTolerance) type = 'متساوی‌الاضلاع';
+        else if (Math.min(b - a, c - b) < sideTolerance) type = 'متساوی‌الساقین';
+        const largestAngle = Math.acos(Math.max(-1, Math.min(1, (a*a + b*b - c*c) / (2*a*b)))) * 180 / Math.PI;
+        if (Math.abs(largestAngle - 90) < 1) type += ' (قائم)';
+        else if (largestAngle > 90) type += ' (منفرجه)';
+      }
+      return { type };
+    }
+
+    function getPattern(points) {
+      if (points.length === 3) {
+        const [a, b, c] = points;
+        // A half-turn about the midpoint of BC completes the parallelogram.
+        return { u: subtract(b, a), v: subtract(c, a), pair: [b, c, subtract(add(b, c), a)] };
+      }
+      // Use an exterior edge as the join between the quadrilateral and its half-turn.
+      const edge = points.findIndex((a, i) => {
+        const b = points[(i + 1) % 4];
+        return turn(a, b, points[(i + 2) % 4]) * turn(a, b, points[(i + 3) % 4]) > 0;
+      });
+      const [a, b, c, d] = points.map((_, i) => points[(i + edge) % 4]);
+      const midpointSum = add(a, b);
+      return { u: subtract(b, d), v: subtract(a, c), pair: points.map(point => subtract(midpointSum, point)) };
+    }
+
+    function drawPolygon(points, fill, stroke, offset = [0, 0]) {
+      ctx.beginPath();
+      points.forEach(([x, y], i) => {
+        if (i === 0) ctx.moveTo(x + offset[0], y + offset[1]);
+        else ctx.lineTo(x + offset[0], y + offset[1]);
+      });
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = stroke;
+      ctx.stroke();
+    }
+
+    function drawPattern(points, origin) {
+      const { u, v, pair } = getPattern(points);
+      const determinant = cross(u, v);
+      if (Math.abs(determinant) < 1) return false;
+      const toLattice = point => [cross(point, v) / determinant, cross(u, point) / determinant];
+      const viewport = [[0, 0], [width, 0], [0, height], [width, height]]
+        .map(point => toLattice(subtract(point, origin)));
+      const cell = [...points, ...pair].map(toLattice);
+      const bounds = [0, 1].map(axis => [
+        Math.floor(Math.min(...viewport.map(p => p[axis])) - Math.max(...cell.map(p => p[axis]))),
+        Math.ceil(Math.max(...viewport.map(p => p[axis])) - Math.min(...cell.map(p => p[axis])))
+      ]);
+      const [[firstI, lastI], [firstJ, lastJ]] = bounds;
+      if ((lastI - firstI + 1) * (lastJ - firstJ + 1) > 12000) return false;
+      for (let i = firstI; i <= lastI; i++) {
+        for (let j = firstJ; j <= lastJ; j++) {
+          const offset = [i * u[0] + j * v[0], i * u[1] + j * v[1]];
+          const alternate = (i + j) % 2 !== 0;
+          drawPolygon(points, alternate ? '#174257' : '#1c4c60', '#4d708a', offset);
+          drawPolygon(pair, alternate ? '#383757' : '#42416a', '#64708d', offset);
+        }
+      }
+      return true;
+    }
+
+    function render() {
+      frame = undefined;
+      const box = canvas.getBoundingClientRect();
+      width = box.width;
+      height = box.height;
+      const scale = window.devicePixelRatio || 1;
+      const pixelWidth = Math.round(width * scale);
+      const pixelHeight = Math.round(height * scale);
+      if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+      if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      const { points, pan } = states[mode];
+      const origin = add([width / 2, height / 2], pan);
+      const info = getShapeInfo(points);
+      let warning = info.error || '';
+      ctx.save();
+      ctx.translate(...origin);
+      ctx.lineWidth = 1;
+      if (!warning && !drawPattern(points, origin)) {
+        warning = 'کاشی برای رسم الگو خیلی باریک یا کوچک است. رأس‌ها را از هم دور کنید.';
+      }
+      ctx.lineWidth = 2.5;
+      drawPolygon(points, 'rgba(18, 42, 57, .45)', '#a4fff3');
+      points.forEach(([x, y], index) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 9, 0, 2 * Math.PI);
+        ctx.fillStyle = index === 0 ? '#ffb888' : '#79e0da';
+        ctx.fill();
+        ctx.strokeStyle = '#14233b';
+        ctx.stroke();
+      });
+      ctx.restore();
+      shapeType.textContent = info.type || '—';
+      if (message.textContent !== warning) message.textContent = warning;
+      message.hidden = !warning;
+    }
+
+    function scheduleRender() {
+      if (frame === undefined) frame = requestAnimationFrame(render);
+    }
+
+    function localPointer(event) {
+      const rect = canvas.getBoundingClientRect();
+      return [event.clientX - rect.left, event.clientY - rect.top];
+    }
+
+    canvas.addEventListener('pointerdown', event => {
+      if (gesture || event.button !== 0) return;
+      const { points, pan } = states[mode];
+      const start = localPointer(event);
+      const cursor = subtract(start, add([width / 2, height / 2], pan));
+      const distances = points.map(point => distance(point, cursor));
+      const nearest = Math.min(...distances);
+      gesture = {
+        id: event.pointerId, start, pan,
+        index: nearest <= 22 ? distances.indexOf(nearest) : -1,
+        points: copyPoints(points)
+      };
+      canvas.setPointerCapture(event.pointerId);
+    });
+
+    canvas.addEventListener('pointermove', event => {
+      if (!gesture || gesture.id !== event.pointerId) return;
+      const delta = subtract(localPointer(event), gesture.start);
+      const state = states[mode];
+      if (gesture.index < 0) {
+        state.pan = add(gesture.pan, delta);
+      } else if (delta[0] !== 0 || delta[1] !== 0 || state.selected === -1) {
+        state.points[gesture.index] = add(gesture.points[gesture.index], delta);
+        if (state.selected !== -1) {
+          state.selected = -1;
+          updatePresetButtons();
+        }
+      }
+      scheduleRender();
+    });
+
+    for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      canvas.addEventListener(eventName, event => {
+        if (gesture?.id === event.pointerId) gesture = undefined;
+      });
+    }
+
+    document.getElementById('center').addEventListener('click', () => {
+      states[mode].pan = [0, 0];
+      scheduleRender();
+    });
+    new ResizeObserver(scheduleRender).observe(canvas);
+    setMode('triangle');
+  </script>
+</body>
+</html>
